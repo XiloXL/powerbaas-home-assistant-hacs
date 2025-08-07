@@ -1,0 +1,12 @@
+{
+  "domain": "powerbaas",
+  "name": "Powerbaas",
+  "version": "1.0.0",
+  "documentation": "https://www.powerbaas.nl/faq/2070705_hoe-koppel-ik-powerbaas-aan-home-assistant",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@yourgithub"],
+  "iot_class": "local_polling",
+  "config_flow": true
+}
+

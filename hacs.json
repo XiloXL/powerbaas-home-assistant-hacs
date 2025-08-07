@@ -1,0 +1,8 @@
+{
+  "name": "Powerbaas",
+  "filename": "custom_components/powerbaas/manifest.json",
+  "render_readme": true,
+  "domains": ["sensor"],
+  "iot_class": "local_polling",
+  "icon": "custom_components/powerbaas/icon.png"
+}
