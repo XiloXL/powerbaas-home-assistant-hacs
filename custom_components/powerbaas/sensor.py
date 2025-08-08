@@ -63,7 +63,7 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = state_class
         self._attr_unique_id = unique_id
         self._multiplier = multiplier
-        self._last_value = None  # Hier onthouden we de vorige waarde
+        self._last_value = None 
 
     @property
     def native_value(self):
@@ -75,7 +75,6 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
             if isinstance(data, (int, float)):
                 value = data / self._multiplier if self._multiplier else data
 
-                # Filter 0-waardes voor total_increasing sensoren
                 if (
                     self._attr_state_class == "total_increasing"
                     and value == 0
