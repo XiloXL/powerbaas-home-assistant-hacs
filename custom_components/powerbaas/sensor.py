@@ -63,6 +63,7 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = state_class
         self._attr_unique_id = unique_id
         self._multiplier = multiplier
+        self._last_value = None  # Hier onthouden we de vorige waarde
 
     @property
     def native_value(self):
@@ -70,9 +71,23 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         try:
             for key in self._path:
                 data = data.get(key, {})
+
             if isinstance(data, (int, float)):
-                return data / self._multiplier if self._multiplier else data
+                value = data / self._multiplier if self._multiplier else data
+
+                # Filter 0-waardes voor total_increasing sensoren
+                if (
+                    self._attr_state_class == "total_increasing"
+                    and value == 0
+                    and self._last_value not in (None, 0)
+                ):
+                    return self._last_value
+
+                self._last_value = value
+                return value
+
             return data
+
         except Exception as err:
             _LOGGER.warning("Error accessing sensor path %s: %s", self._path, err)
             return None
