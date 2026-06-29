@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Powerbaas configureren",
+        "description": "Voer het host-adres van je Powerbaas-apparaat in",
+        "data": {
+          "host": "Host-adres",
+          "name": "Naam",
+          "scan_interval": "Update-interval (seconden, 5-60)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Ongeldig host-adres. Gebruik een formaat zoals http://192.168.1.100",
+      "cannot_connect": "Kan geen verbinding maken met dit host-adres. Controleer het adres en de netwerkverbinding."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Powerbaas-opties aanpassen",
+        "description": "Werk het host-adres van je Powerbaas-apparaat bij",
+        "data": {
+          "host": "Host-adres",
+          "scan_interval": "Update-interval (seconden, 5-60)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Ongeldig host-adres. Gebruik een formaat zoals http://192.168.1.100",
+      "cannot_connect": "Kan geen verbinding maken met dit host-adres. Controleer het adres en de netwerkverbinding."
+    }
+  }
+}

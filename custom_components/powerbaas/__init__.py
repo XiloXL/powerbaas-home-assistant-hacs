@@ -1,19 +1,20 @@
 import aiohttp
+import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN, SCAN_INTERVAL
+from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    session = aiohttp.ClientSession()
     api_url = entry.data.get("host")
+    scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     if not api_url:
         _LOGGER.error("Geen hostadres opgegeven voor Powerbaas.")
@@ -21,11 +22,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def async_update_data():
         try:
-            async with session.get(api_url) as response:
-                response.raise_for_status()
-                return await response.json()
-        except Exception as err:
-            _LOGGER.error("Error fetching data from Powerbaas API (%s): %s", api_url, err)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    data["_last_update"] = datetime.now().isoformat()
+                    return data
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout bij het ophalen van data van Powerbaas API (%s)", api_url)
+            raise
+        except aiohttp.ClientError as err:
+            _LOGGER.error("HTTP-fout bij het ophalen van data van Powerbaas API (%s): %s", api_url, err)
             raise
 
     coordinator = DataUpdateCoordinator(
@@ -33,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER,
         name=DOMAIN,
         update_method=async_update_data,
-        update_interval=SCAN_INTERVAL,
+        update_interval=timedelta(seconds=scan_interval),
     )
 
     try:
@@ -44,6 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "coordinator": coordinator,
         "host": api_url,
+        "name": entry.title or "Powerbaas",
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
