@@ -1,46 +1,47 @@
 import logging
+from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, MAIN_SENSORS, DIAGNOSTIC_SENSORS
 
 _LOGGER = logging.getLogger(__name__)
 
-SENSOR_DEFINITIONS = [
-    ("Power Usage", ["meterReading", "powerUsage"], "W", "power", "measurement", 1),
-    ("Power Delivered High", ["meterReading", "powerDeliverHigh"], "kWh", "energy", "total_increasing", 1000),
-    ("Power Delivered Low", ["meterReading", "powerDeliverLow"], "kWh", "energy", "total_increasing", 1000),
-    ("Power Returned High", ["meterReading", "powerReturnHigh"], "kWh", "energy", "total_increasing", 1000),
-    ("Power Returned Low", ["meterReading", "powerReturnLow"], "kWh", "energy", "total_increasing", 1000),
-    ("Gas Consumption", ["meterReading", "gas"], "m³", "gas", "total_increasing", 1000),
-    ("Voltage L1", ["meterReading", "voltageL1"], "V", "voltage", "measurement", 1),
-    ("Voltage L2", ["meterReading", "voltageL2"], "V", "voltage", "measurement", 1),
-    ("Voltage L3", ["meterReading", "voltageL3"], "V", "voltage", "measurement", 1),
-    ("Current L1", ["meterReading", "currentL1"], "A", "current", "measurement", 1),
-    ("Current L2", ["meterReading", "currentL2"], "A", "current", "measurement", 1),
-    ("Current L3", ["meterReading", "currentL3"], "A", "current", "measurement", 1),
-    ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1),
-    ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1),
-    ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1),
-    ("Solar Current Output", ["solarReading", "current"], "W", "power", "measurement", 1),
-    ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000),
-    ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1),
-    ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1),
-    ("Powerbaas WiFi Strength", ["system", "wifiStrength"], "dBm", None, None, 1),
-    ("Powerbaas Firmware Version", ["system", "firmwareVersion"], None, None, None, 1),
-    ("Powerbaas Uptime", ["system", "upSince"], None, None, None, 1),
-]
+
+def _parse_timestamp(value):
+    """Parse a timestamp string (ISO or 'YYYY-MM-DD HH:MM:SS') into a local datetime."""
+    if not value:
+        return None
+    try:
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            dt = datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
+        if dt.tzinfo is None:
+            dt = dt_util.as_local(dt)
+        return dt
+    except ValueError as err:
+        _LOGGER.warning("Error parsing timestamp %s: %s", value, err)
+        return None
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    host_url = hass.data[DOMAIN][entry.entry_id]["host"]
+    device_name = hass.data[DOMAIN][entry.entry_id]["name"]
 
     entities = []
-    for name, path, unit, device_class, state_class, multiplier in SENSOR_DEFINITIONS:
-        unique_id = f"powerbaas_{'_'.join(path).lower()}"
+    for name, path, unit, device_class, state_class, multiplier, entity_category in MAIN_SENSORS + DIAGNOSTIC_SENSORS:
+        unique_id = f"{entry.entry_id}_{'_'.join(path).lower()}"
         entities.append(
             PowerBaasSensor(
                 coordinator,
+                entry.entry_id,
+                device_name,
+                host_url,
                 name,
                 path,
                 unit,
@@ -48,13 +49,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 state_class,
                 unique_id,
                 multiplier,
+                entity_category,
             )
         )
 
     async_add_entities(entities, True)
 
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, name, path, unit, device_class, state_class, unique_id, multiplier):
+    def __init__(self, coordinator, entry_id, device_name, host_url, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None):
         super().__init__(coordinator)
         self._attr_name = name
         self._path = path
@@ -62,13 +64,34 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_unique_id = unique_id
+        self._attr_entity_category = entity_category
         self._multiplier = multiplier
-        self._last_value = None 
+        self._last_value = None
+
+        config_url = host_url
+        if host_url and not host_url.startswith(("http://", "https://")):
+            config_url = f"http://{host_url}"
+
+        system_data = coordinator.data.get("system", {}) if coordinator.data else {}
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry_id)},
+            name=device_name,
+            manufacturer="Powerbaas",
+            model="Energy Monitor",
+            sw_version=str(system_data.get("firmwareVersion", "Unknown")),
+            configuration_url=config_url,
+        )
 
     @property
     def native_value(self):
         data = self.coordinator.data
         try:
+            if self._attr_device_class == "timestamp":
+                for key in self._path:
+                    data = data.get(key, {}) if isinstance(data, dict) else None
+                return _parse_timestamp(data) if isinstance(data, str) else None
+
             for key in self._path:
                 data = data.get(key, {})
 

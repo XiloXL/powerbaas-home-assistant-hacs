@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Powerbaas",
+        "description": "Enter the host URL for your Powerbaas device",
+        "data": {
+          "host": "Host URL",
+          "name": "Name",
+          "scan_interval": "Update interval (seconds, 5-60)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Invalid host URL format. Please use format like http://192.168.1.100",
+      "cannot_connect": "Cannot connect to the specified host. Check the URL and network connection."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Powerbaas Options",
+        "description": "Update the host URL for your Powerbaas device",
+        "data": {
+          "host": "Host URL",
+          "scan_interval": "Update interval (seconds, 5-60)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Invalid host URL format. Please use format like http://192.168.1.100",
+      "cannot_connect": "Cannot connect to the specified host. Check the URL and network connection."
+    }
+  }
+}
