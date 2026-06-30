@@ -39,6 +39,12 @@ This Home Assistant integration connects your Powerbaas device to Home Assistant
 
 If your device's IP address changes later, go to the integration's options to update the host without removing and re-adding it.
 
+## Upgrading from 1.1.0 to 1.2.0
+
+> **Important:** entity names changed in 1.2.0. Every entity now gets your device's name as a prefix (e.g. `sensor.power_delivered_low` becomes `sensor.powerbaas_power_delivered_low`, based on the name you gave the device during setup).
+
+This happens automatically the first time the integration reloads after updating — your existing entities are renamed in place, so their history, statistics and `unique_id` are preserved, no duplicates are created. However, **any automation, script or dashboard card that references the old entity ID directly will need to be updated** to the new, prefixed entity ID.
+
 ## Sensors Created
 
 ### Main sensors
